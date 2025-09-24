@@ -27,10 +27,10 @@ const menu = async (m, sock) => {
 
   // Function to format commands into stylish fancy boxes
   const boxify = (title, cmds) => {
-    let out = `\n╭─❏ *${title}* ❏─╮\n`;
+    let out = `\n╭─〔 ${title} 〕─╮\n`;
     const perLine = 3;
     for (let i = 0; i < cmds.length; i += perLine) {
-      out += "│ " + cmds.slice(i, i + perLine).map(c => `🪄 ${c}`).join('   ') + "\n";
+      out += "│ " + cmds.slice(i, i + perLine).map(c => `◈ ${c}`).join('   ') + "\n";
     }
     out += "╰──────────────────╯";
     return out;
@@ -77,15 +77,14 @@ const menu = async (m, sock) => {
 
   // MAIN MENU
   if (cmd === 'menu') {
-    // Animated loader before showing menu
+    // Small digital loader
     const loader = `
-⏳ Loading Menu...
-▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒
-██▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒ 25%
-██████▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒ 50%
-██████████▒▒▒▒▒▒▒▒▒▒▒▒ 75%
-█████████████████████ 100%
-✨ Menu Ready!`;
+[░░░░░░░░░░] 0%
+[██░░░░░░░░] 30%
+[████░░░░░░] 60%
+[███████░░░] 90%
+[██████████] 100% ✔
+`;
 
     await m.reply(loader);
 
@@ -120,6 +119,14 @@ const menu = async (m, sock) => {
   if (cmd.endsWith('menu') && cmd !== 'menu') {
     const key = cmd.replace('menu', '');
     if (sections[key]) {
+      const tinyLoader = `
+[▓░░░░░░░░░] 10%
+[▓▓▓░░░░░░░] 50%
+[▓▓▓▓▓▓▓░░░] 90%
+[▓▓▓▓▓▓▓▓▓▓] 100% ✔
+`;
+      await m.reply(tinyLoader);
+
       await sock.sendMessage(m.from, { 
         text: `✨ *${key.toUpperCase()} MENU* ✨\n${sections[key]}` 
       }, { quoted: m });
