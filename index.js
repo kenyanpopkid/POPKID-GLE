@@ -1,4 +1,3 @@
-
 import dotenv from 'dotenv';
 dotenv.config();
 import {
@@ -192,26 +191,6 @@ async function start() {
     console.error("❌ Startup Error:", err.stack || err.message);
     process.exit(1);
   }
-}
-//popkid status handler
-Matrix.ev.on('messages.upsert', async (chatUpdate) => {
-            try {
-                const messages = chatUpdate.messages;
-                if (!messages || messages.length === 0) return;
-                const mek = messages[0];
-                if (mek.key.remoteJid === 'status@broadcast') {
-                    await Matrix.readMessages([mek.key]);
-                    console.log("Automatically viewed status update.");
-                }
-            } catch (err) {
-                console.error("Error marking status as viewed:", err);
-            }
-        });
-
-    } catch (error) {
-        console.error('Critical Error:', error);
-        process.exit(1);
-    }
 }
 // Initialize bot
 async function init() {
