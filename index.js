@@ -156,7 +156,7 @@ async function start() {
               title: "ᴘᴏᴘᴋɪᴅ xᴍᴅ ʙᴏᴛ",
               body: "ᴘᴏᴡᴇʀᴇᴅ ʙʏ ᴘᴏᴘᴋɪᴅ",
               thumbnailUrl: "https://i.ibb.co/zhWGyVZL/file-00000000c6b0624388a556a5aa392449.png",
-              sourceUrl: "https://whatsapp.com/channel/0029VbB6d0KKAwEdvcgqrH26",
+              sourceUrl: "https://whatsapp.com/channel/0029VbAqgNn5fM5SXe1ufH0f",
               mediaType: 1,
               renderLargerThumbnail: false
             }
