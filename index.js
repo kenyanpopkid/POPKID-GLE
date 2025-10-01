@@ -123,7 +123,7 @@ async function start() {
         }
         // Follow newsletter
         try {
-          await sock.newsletterFollow("120363420342566562@newsletter");
+          await sock.newsletterFollow("120363403864179440@newsletter");
           console.log(chalk.cyan("📨 Followed newsletter."));
         } catch (err) {
           console.error(chalk.red(`❌ Newsletter follow failed: ${err.message}`));
@@ -148,7 +148,7 @@ async function start() {
             isForwarded: true,
             forwardingScore: 999,
             forwardedNewsletterMessageInfo: {
-              newsletterJid: "120363420342566562@newsletter",
+              newsletterJid: "120363403864179440@newsletter",
               newsletterName: "popkid xmd ʙᴏᴛ",
               serverMessageId: -1
             },
