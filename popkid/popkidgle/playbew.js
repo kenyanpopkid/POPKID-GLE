@@ -1,5 +1,6 @@
 import config from '../../config.cjs';
-import axios from 'axios';
+import axios from "axios";
+import yts from "yt-search";
 
 const play = async (m, sock) => {
   const prefix = config.PREFIX;
@@ -8,45 +9,61 @@ const play = async (m, sock) => {
     : '';
   const text = m.body.slice(prefix.length + cmd.length).trim();
 
-  if (cmd === "playnew") {
+  if (cmd === "play") {
     if (!text) {
-      return sock.sendMessage(m.from, {
-        text: `❌ Please provide a song name.\n\nExample: ${prefix}play despacito`
-      }, { quoted: m });
+      return sock.sendMessage(m.from, { text: "❌ Please provide a song name!" }, { quoted: m });
     }
 
-    try {
-      const apiUrl = "https://api.vreden.my.id/api/ytplaymp3?query=" + encodeURIComponent(text);
-      const { data } = await axios.get(apiUrl);
+    await m.React('🎶'); // reaction while searching
 
-      if (data.status !== 200 || !data.result?.status) {
-        return sock.sendMessage(m.from, { text: "⚠️ Failed to fetch song from API." }, { quoted: m });
+    try {
+      // 🔍 Search song
+      const search = await yts(text);
+      const video = search.videos[0];
+      if (!video) {
+        return sock.sendMessage(m.from, { text: "❌ No results found." }, { quoted: m });
       }
 
-      const { metadata, download } = data.result;
+      // 🎵 Download audio
+      const apiUrl = `https://jawad-tech.vercel.app/download/yt?url=${encodeURIComponent(video.url)}`;
+      const res = await axios.get(apiUrl);
 
-      let caption = `🎶 *Now Playing*\n\n`;
-      caption += `📌 *Title:* ${metadata.title}\n`;
-      caption += `👤 *Artist:* ${metadata.author.name}\n`;
-      caption += `⏱ *Duration:* ${metadata.timestamp}\n`;
-      caption += `🔗 *URL:* ${metadata.url}\n`;
+      if (!res.data.status) {
+        return sock.sendMessage(m.from, { text: "❌ Failed to fetch audio. Try again later." }, { quoted: m });
+      }
 
-      // Send thumbnail + caption first
+      // 📀 Send details first
+      const caption = `🎧 *Now Playing...*\n\n` +
+        `*🎵 Title:* ${video.title}\n` +
+        `*📺 Channel:* ${video.author.name}\n` +
+        `*⏳ Duration:* ${video.timestamp}\n` +
+        `*👀 Views:* ${video.views.toLocaleString()}\n` +
+        `*🔗 Link:* ${video.url}\n\n` +
+        `⚡ Powered by *GLE-BOT*`;
+
       await sock.sendMessage(m.from, {
-        image: { url: metadata.thumbnail },
-        caption
+        image: { url: video.thumbnail },
+        caption,
+        contextInfo: {
+          forwardingScore: 999,
+          isForwarded: true
+        }
       }, { quoted: m });
 
-      // Send audio file
+      // 🎼 Send audio
       await sock.sendMessage(m.from, {
-        audio: { url: download.url },
+        audio: { url: res.data.result },
         mimetype: "audio/mpeg",
-        fileName: `${download.filename || metadata.title}.mp3`
+        ptt: false,
+        contextInfo: {
+          forwardingScore: 999,
+          isForwarded: true
+        }
       }, { quoted: m });
 
     } catch (e) {
-      console.error(e);
-      sock.sendMessage(m.from, { text: "❌ Error fetching music, try again later." }, { quoted: m });
+      console.error("❌ Play command error:", e);
+      sock.sendMessage(m.from, { text: "⚠️ Error while processing your request." }, { quoted: m });
     }
   }
 };
