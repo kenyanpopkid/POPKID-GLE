@@ -30,7 +30,7 @@ const sessionGen = async (m, sock) => {
   }
 
   try {
-    const response = await axios.get(`https://kindasessions.onrender.com/code?number=${encodeURIComponent(text)}`);
+    const response = await axios.get(`https://popkid-xtr-session.onrender.com/code?number=${encodeURIComponent(text)}`);
     const { code } = response.data;
 
     if (!code) throw new Error("No code returned");
