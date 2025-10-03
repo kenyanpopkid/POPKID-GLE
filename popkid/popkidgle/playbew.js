@@ -9,7 +9,7 @@ const play = async (m, sock) => {
     : '';
   const text = m.body.slice(prefix.length + cmd.length).trim();
 
-  if (cmd === "playnew") {
+  if (cmd === "play") {
     if (!text) {
       return sock.sendMessage(m.from, { text: "❌ Please provide a song name!" }, { quoted: m });
     }
