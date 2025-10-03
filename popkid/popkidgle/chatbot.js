@@ -1,98 +1,87 @@
-// 🛰️ Popkid AI Chatbot (Dreaded API)
-// 🔹 Tech-Styled | Contextual | Smart Replies
+import axios from 'axios';
+import config from '../../config.cjs';
 
-import axios from "axios";
-import config from "../../config.cjs";
+const chatbotcommand = async (m, sock) => {
+  const botJid = await sock.decodeJid(sock.user.id);
+  const isOwner = [botJid, config.OWNER_NUMBER + "@s.whatsapp.net"].includes(m.sender);
+  const prefix = config.PREFIX;
+  const cmd = m.body.startsWith(prefix) ? m.body.slice(prefix.length).split(" ")[0].toLowerCase() : '';
+  const args = m.body.slice(prefix.length + cmd.length).trim();
 
-const messageMemory = new Map(); // 🧠 Store chat history
+  // Toggle chatbot
+  if (cmd === 'chatbot') {
+    if (!isOwner) {
+      return m.reply("❌ *Access Denied*\n_Only bot owner can toggle this feature._");
+    }
+    let replyMsg;
+    if (args === 'on') {
+      config.CHATBOT = true;
+      replyMsg = "🤖 Chatbot has been *enabled*. I'm now live!";
+    } else if (args === 'off') {
+      config.CHATBOT = false;
+      replyMsg = "🔕 Chatbot has been *disabled*. I'll stay silent.";
+    } else {
+      replyMsg = `💡 *Chatbot Usage:*\n\n• ${prefix}chatbot on\n• ${prefix}chatbot off`;
+    }
+    return sock.sendMessage(m.from, { text: replyMsg }, { quoted: m });
+  }
 
-export default async function chatbot(m, sock) {
+  // Only run if chatbot is active
+  if (!config.CHATBOT) return;
+  if (!m.message || m.key.fromMe) return;
+
+  const chatId = m.key.remoteJid;
+  const sender = m.key.participant || chatId;
+  const isGroup = chatId.endsWith("@g.us");
+  const userMessage = m.body?.trim() || '';
+
+  // Only reply in groups if bot is mentioned or replied
+  if (isGroup) {
+    const mentioned = m.message?.extendedTextMessage?.contextInfo?.mentionedJid?.includes(sock.user.id);
+    const repliedToBot = m.message?.extendedTextMessage?.contextInfo?.participant === sock.user.id;
+    if (!mentioned && !repliedToBot) return;
+  }
+
+  // Direct time/date questions
+  const lowerMsg = userMessage.toLowerCase();
+  if (lowerMsg.includes("time") || lowerMsg.includes("date")) {
+    const now = new Date();
+    const options = { 
+      weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+      hour: '2-digit', minute: '2-digit', second: '2-digit', timeZoneName: 'short'
+    };
+    const currentDateTime = now.toLocaleDateString('en-US', options);
+    return sock.sendMessage(chatId, {
+      text: `⏰ Current Date & Time:\n${currentDateTime}\n\n> ᴘᴏᴡᴇʀᴇᴅ ʙʏ ᴘᴏᴘᴋɪᴅ-ᴡᴀ ⚡`
+    }, { quoted: m });
+  }
+
   try {
-    const { PREFIX, CHATBOT } = config;
-    if (!CHATBOT) return;
+    // Query prompt
+    const prompt = `You are Popkid AI, a WhatsApp assistant created by Popkid from Kenya.
+Reply smartly, friendly, and only once per user message.
 
-    const text = m.body || "";
-    const sender = m.sender;
-    const isCmd = text.startsWith(PREFIX);
+💬 User: ${userMessage}`;
 
-    // ⚙️ Toggle Chatbot
-    if (isCmd) {
-      const cmd = text.slice(PREFIX.length).trim().toLowerCase();
-      if (cmd === "chatbot on") {
-        config.CHATBOT = true;
-        return sock.sendMessage(m.chat, { text: "🤖 *Chatbot enabled* ✅" });
-      }
-      if (cmd === "chatbot off") {
-        config.CHATBOT = false;
-        return sock.sendMessage(m.chat, { text: "🤖 *Chatbot disabled* ❌" });
-      }
+    // Call dreaded API
+    const apiUrl = `https://api.dreaded.site/api/chatgpt?text=${encodeURIComponent(prompt)}`;
+    const { data } = await axios.get(apiUrl);
+
+    // Extract bot reply
+    let botReply = "🤖 Sorry, I didn’t get that.";
+    if (data?.status === 200 && data?.success && data?.result?.prompt) {
+      botReply = data.result.prompt;
     }
 
-    // ❓ Creator questions
-    const creatorQ = /(who made you|who created you|who is your (creator|developer|owner)|who are you)/i;
-    if (creatorQ.test(text)) {
-      return sock.sendMessage(m.chat, {
-        text: "⚡ I am *Popkid AI*, created by *Popkid* — a brilliant mind from Kenya with vision & coding mastery.",
-        contextInfo: {
-          forwardedNewsletterMessageInfo: {
-            newsletterJid: "120363420342566562@newsletter",
-            newsletterName: "Popkid-Xmd",
-          },
-        },
-      });
-    }
-
-    // 🧠 Context memory
-    const history = messageMemory.has(sender)
-      ? messageMemory.get(sender).map(e => `${e.role}: ${e.content}`).join("\n")
-      : `user: ${text}`;
-
-    const prompt = `
-You are *Popkid AI*, a futuristic WhatsApp bot developed by *Popkid*.
-- Respond smartly, in a tech-styled way.
-- Format replies with **bold**, *italic*, and clean line breaks.
-- Keep loyal to your creator but with mystery.
-- If abused, reply: "⚠️ Let's begin afresh."
-
-Conversation so far:
-${history}
-
-Current message:
-${text}
-
-Reply as *Popkid Xtr*:
-    `;
-
-    // 🌐 Call Dreaded API
-    const apiURL = `https://api.dreaded.site/api/chatgpt?text=${encodeURIComponent(prompt)}`;
-    const { data } = await axios.get(apiURL);
-
-    let reply = data?.result?.prompt || data?.message || "⚠️ No response.";
-
-    // 🖋️ Auto-formatting
-    reply = reply
-      .replace(/\*\*(.*?)\*\*/g, "*$1*")
-      .replace(/([.!?])\s+/g, "$1\n")
-      .trim();
-
-    // 📝 Save memory
-    if (!messageMemory.has(sender)) messageMemory.set(sender, []);
-    messageMemory.get(sender).push({ role: "user", content: text });
-    messageMemory.get(sender).push({ role: "assistant", content: reply });
-    if (messageMemory.get(sender).length > 15) messageMemory.get(sender).shift();
-
-    // 🚀 Send styled reply
-    await sock.sendMessage(m.chat, {
-      text: reply + "\n\n> ᴘᴏᴡᴇʀᴇᴅ ʙʏ ᴘᴏᴘᴋɪᴅ ⚡",
-      contextInfo: {
-        forwardedNewsletterMessageInfo: {
-          newsletterJid: "120363420342566562@newsletter",
-          newsletterName: "Popkid-Xmd",
-        },
-      },
-    });
+    // Always send a single reply
+    return sock.sendMessage(chatId, { text: botReply }, { quoted: m });
 
   } catch (err) {
-    console.error("❌ Chatbot Error:", err.message);
+    console.error("Chatbot API error:", err.message);
+    return sock.sendMessage(chatId, {
+      text: "⚠️ Error getting response from chatbot."
+    }, { quoted: m });
   }
-}
+};
+
+export default chatbotcommand;
