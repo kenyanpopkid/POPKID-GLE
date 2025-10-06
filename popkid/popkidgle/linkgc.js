@@ -3,9 +3,7 @@ import config from '../../config.cjs';
 const linkgc = async (m, gss) => {
   try {
     const prefix = config.PREFIX;
-    const cmd = m.body.startsWith(prefix)
-      ? m.body.slice(prefix.length).split(' ')[0].toLowerCase()
-      : '';
+    const cmd = m.body.startsWith(prefix) ? m.body.slice(prefix.length).split(' ')[0].toLowerCase() : '';
     const text = m.body.slice(prefix.length + cmd.length).trim();
 
     const validCommands = ['linkgc', 'grouplink'];
@@ -15,24 +13,17 @@ const linkgc = async (m, gss) => {
       return m.reply('🚫 *GROUP ONLY COMMAND*');
     }
 
-    // ✅ Fetch group metadata safely
     const groupMetadata = await gss.groupMetadata(m.from);
-    const botNumber = (await gss.decodeJid(gss.user.id)).split(':')[0];
-
-    // ✅ Proper admin detection
-    const isBotAdmin = groupMetadata.participants.some(
-      p => p.id === botNumber && (p.admin === 'admin' || p.admin === 'superadmin')
-    );
+    const botNumber = await gss.decodeJid(gss.user.id);
+    const isBotAdmin = groupMetadata.participants.find(p => p.id === botNumber)?.admin;
 
     if (!isBotAdmin) {
       return m.reply('🛑 *BOT NEEDS TO BE ADMIN TO FETCH GROUP LINK*');
     }
 
-    // ✅ Fetch group link safely
     const groupCode = await gss.groupInviteCode(m.from);
     const groupLink = `https://chat.whatsapp.com/${groupCode}`;
 
-    // ✅ Send the stylish message
     await gss.sendMessage(m.from, {
       text: `
 ╭━━━「 𝗚𝗥𝗢𝗨𝗣 𝗟𝗜𝗡𝗞 」━━⬣
