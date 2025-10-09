@@ -1,71 +1,61 @@
-import config from '../../config.cjs';
-import axios from "axios";
-import yts from "yt-search";
+const { cmd } = require("../command");
+const axios = require("axios");
+const yts = require("yt-search");
 
-const play = async (m, sock) => {
-  const prefix = config.PREFIX;
-  const cmd = m.body.startsWith(prefix)
-    ? m.body.slice(prefix.length).split(' ')[0].toLowerCase()
-    : '';
-  const text = m.body.slice(prefix.length + cmd.length).trim();
+cmd({
+  pattern: "play",
+  alias: ["song", "ytmp3"],
+  desc: "Download a YouTube song by name or link.",
+  category: "music",
+  react: "🎶",
+  filename: __filename
+},
+async (conn, m, { from, q, reply }) => {
+  try {
+    if (!q) return reply("❌ Please provide a song name or YouTube link!\nExample: `.play despacito`");
 
-  if (cmd === "play") {
-    if (!text) {
-      return sock.sendMessage(m.from, { text: "❌ Please provide a song name!" }, { quoted: m });
+    reply("🔎 Searching for your song... Please wait 🎧");
+
+    // 🔍 Search song
+    const search = await yts(q);
+    const video = search.videos[0];
+    if (!video) {
+      return conn.sendMessage(from, { text: "❌ No results found for that song." }, { quoted: m });
     }
 
-    await m.React('🎶'); // reaction while searching
+    // 🎵 Song details
+    const title = video.title;
+    const views = video.views;
+    const duration = video.timestamp;
+    const thumbnail = video.thumbnail;
+    const link = video.url;
 
-    try {
-      // 🔍 Search song
-      const search = await yts(text);
-      const video = search.videos[0];
-      if (!video) {
-        return sock.sendMessage(m.from, { text: "❌ No results found." }, { quoted: m });
-      }
+    // 🪄 Try fetching download link
+    const apiUrl = `https://jawad-tech.vercel.app/download/yt?url=${encodeURIComponent(link)}`;
+    const res = await axios.get(apiUrl);
 
-      // 🎵 Download audio
-      const apiUrl = `https://jawad-tech.vercel.app/download/yt?url=${encodeURIComponent(video.url)}`;
-      const res = await axios.get(apiUrl);
-
-      if (!res.data.status) {
-        return sock.sendMessage(m.from, { text: "❌ Failed to fetch audio. Try again later." }, { quoted: m });
-      }
-
-      // 📀 Send details first
-      const caption = `🎧 *Now Playing...*\n\n` +
-        `*🎵 Title:* ${video.title}\n` +
-        `*📺 Channel:* ${video.author.name}\n` +
-        `*⏳ Duration:* ${video.timestamp}\n` +
-        `*👀 Views:* ${video.views.toLocaleString()}\n` +
-        `*🔗 Link:* ${video.url}\n\n` +
-        `⚡ Powered by *GLE-BOT*`;
-
-      await sock.sendMessage(m.from, {
-        image: { url: video.thumbnail },
-        caption,
-        contextInfo: {
-          forwardingScore: 999,
-          isForwarded: true
-        }
-      }, { quoted: m });
-
-      // 🎼 Send audio
-      await sock.sendMessage(m.from, {
-        audio: { url: res.data.result },
-        mimetype: "audio/mpeg",
-        ptt: false,
-        contextInfo: {
-          forwardingScore: 999,
-          isForwarded: true
-        }
-      }, { quoted: m });
-
-    } catch (e) {
-      console.error("❌ Play command error:", e);
-      sock.sendMessage(m.from, { text: "⚠️ Error while processing your request." }, { quoted: m });
+    if (!res.data || !res.data.status || !res.data.data || !res.data.data.audio) {
+      return conn.sendMessage(from, { text: "❌ Failed to fetch audio. Please try again later." }, { quoted: m });
     }
+
+    const audioUrl = res.data.data.audio;
+
+    // 🎧 Send song info first
+    await conn.sendMessage(from, {
+      image: { url: thumbnail },
+      caption: `🎵 *${title}*\n🕒 *Duration:* ${duration}\n👁️ *Views:* ${views}\n\n📥 Downloading and sending audio...`,
+    }, { quoted: m });
+
+    // 🎶 Send audio file
+    await conn.sendMessage(from, {
+      audio: { url: audioUrl },
+      mimetype: "audio/mpeg",
+      fileName: `${title}.mp3`,
+      ptt: false
+    }, { quoted: m });
+
+  } catch (error) {
+    console.error("Play Command Error:", error);
+    reply(`❌ Error: ${error.message || "Something went wrong while processing your request."}`);
   }
-};
-
-export default play;
+});
